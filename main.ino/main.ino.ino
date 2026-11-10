@@ -4,7 +4,6 @@
 
 #include "wifi_manager.h"
 
-#include "ambient_client.h"
 #include "ir_receiver.h"
 #include "ir_sender.h"
 #include "sht41_sensor.h"
@@ -63,7 +62,6 @@ if (!lps25_ready)
 }
     scd40_init();
     wifi_connect();
-    ambient_init(); 
     ir_receiver_init();
     ir_sender_init();
     sht41_init();
@@ -173,16 +171,6 @@ void loop() {
             sensor_seq++;
         }
     }
-
-    // ambient_send(pressure,
-    //         co2,
-    //         scd_temp,
-    //         humidity,
-    //         sht_temp,
-    //         sht_hum,
-    //         absolute_humidity,
-    //         dew_point
-    //         );
 
 
 
