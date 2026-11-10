@@ -1,3 +1,4 @@
+#include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 
@@ -106,38 +107,54 @@ void mqtt_callback(
     else if (
         String(topic)
         ==
-        "room/aircon/cool"
+        "room/aircon/set"
     )
     {
-        int temp =
-            msg.toInt();
+        StaticJsonDocument<384> doc;
 
-        aircon_set_cool(
-            temp
+        DeserializationError error =
+            deserializeJson(doc, msg);
+
+        if(error)
+        {
+            Serial.println(
+                "Aircon JSON Parse Error"
+            );
+
+            return;
+        }
+
+        aircon_set_state(
+            doc["power"] | aircon_state.power,
+
+            aircon_mode_from_text(
+                doc["mode"] | aircon_get_mode_text()
+            ),
+
+            doc["temperature"] | aircon_state.temperature,
+
+            aircon_fan_from_text(
+                doc["fan"] | aircon_get_fan_text()
+            ),
+
+            aircon_swing_v_from_text(
+                doc["swing_v"] | aircon_get_swing_v_text()
+            ),
+
+            aircon_swing_h_from_text(
+                doc["swing_h"] | aircon_get_swing_h_text()
+            ),
+
+            aircon_warp_from_text(
+                doc["warp"] | aircon_get_warp_text()
+            ),
+
+            aircon_bio_from_text(
+                doc["bio"] | aircon_get_bio_text()
+            )
         );
-    }
 
-    else if (
-        String(topic)
-        ==
-        "room/aircon/heat"
-    )
-    {
-        int temp =
-            msg.toInt();
-
-        aircon_set_heat(
-            temp
-        );
-    }
-
-    else if (
-        String(topic)
-        ==
-        "room/aircon/off"
-    )
-    {
-        aircon_off();
+        aircon_apply();
     }
 }
 //==========================================
@@ -210,15 +227,7 @@ void mqtt_reconnect() {
                 "room/light/timer"
             );
             mqtt.subscribe(
-                "room/aircon/cool"
-            );
-
-            mqtt.subscribe(
-                "room/aircon/heat"
-            );
-
-            mqtt.subscribe(
-                "room/aircon/off"
+                "room/aircon/set"
             );
             Serial.println(
                 "MQTT Subscribe OK"
@@ -307,6 +316,36 @@ void mqtt_publish_aircon_state()
         aircon_state.temperature
     );
 
+    json += ",";
+
+    json += "\"fan\":\"";
+    json += aircon_get_fan_text();
+    json += "\"";
+
+    json += ",";
+
+    json += "\"swing_v\":\"";
+    json += aircon_get_swing_v_text();
+    json += "\"";
+
+    json += ",";
+
+    json += "\"swing_h\":\"";
+    json += aircon_get_swing_h_text();
+    json += "\"";
+
+    json += ",";
+
+    json += "\"warp\":\"";
+    json += aircon_get_warp_text();
+    json += "\"";
+
+    json += ",";
+
+    json += "\"bio\":\"";
+    json += aircon_get_bio_text();
+    json += "\"";
+
     json += "}";
 
     mqtt.publish(
@@ -324,7 +363,9 @@ void mqtt_publish_sensor_state(
     uint16_t co2,
     float temp,
     float humidity,
-    float pressure
+    float pressure,
+    float absolute_humidity,
+    float dew_point
 )
 {
     String json;
@@ -349,6 +390,16 @@ void mqtt_publish_sensor_state(
     json += "\"pressure\":";
     json += String(pressure,1);
 
+    json += ",";
+
+    json += "\"absolute_humidity\":";
+    json += String(absolute_humidity, 1);
+
+    json += ",";
+
+    json += "\"dew_point\":";
+    json += String(dew_point, 1);
+
     json += "}";
 
     mqtt.publish(
@@ -361,7 +412,9 @@ void mqtt_publish_sensor_periodic(
     uint16_t co2,
     float temp,
     float humidity,
-    float pressure
+    float pressure,
+    float absolute_humidity,
+    float dew_point
 )
 {
     static uint32_t last_publish = 0;
@@ -377,7 +430,9 @@ void mqtt_publish_sensor_periodic(
         co2,
         temp,
         humidity,
-        pressure
+        pressure,
+        absolute_humidity,
+        dew_point
     );
 
     last_publish =

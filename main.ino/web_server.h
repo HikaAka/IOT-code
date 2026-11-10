@@ -6,7 +6,9 @@ bool web_server_init();
 void web_server_update(float pressure,
                   uint16_t co2,
                   float sht_temperature,
-                  float sht_humidity                  
+                  float sht_humidity,
+                  float absolute_humidity,
+                  float dew_point                  
                   );
 
 void handleAircon();

@@ -12,12 +12,17 @@ void mqtt_publish_sensor_state(
     uint16_t co2,
     float temp,
     float humidity,
-    float pressure
+    float pressure,
+    float absolute_humidity,
+    float dew_point
 );
 
 void mqtt_publish_sensor_periodic(
     uint16_t co2,
     float temp,
     float humidity,
-    float pressure
+    float pressure,
+    float absolute_humidity,
+    float dew_point
 );
+

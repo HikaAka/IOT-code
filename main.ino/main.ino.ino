@@ -13,9 +13,25 @@
 #include "serial_input.h"
 #include "light_controller.h"
 #include "mqtt_client.h"
+#include "environment_calc.h"
 
 #include <esp_task_wdt.h>
+static uint32_t last_sensor_ms = 0;
+static uint32_t boot_ms = 0;
 
+static uint32_t last_lps25_success_ms = 0;
+static uint32_t last_scd40_success_ms = 0;
+static uint32_t last_sht41_success_ms = 0;
+
+static bool last_lps25_ok = false;
+static bool last_scd40_ok = false;
+static bool last_sht41_ok = false;
+
+static uint32_t sensor_seq = 0;
+static uint32_t last_alive_ms = 0;
+
+
+void check_app_watchdog();
 void setup() {
 
     Serial.begin(115200);
@@ -27,14 +43,24 @@ void setup() {
     i2c_init();
 
     // センサ初期化
-    if (!lps25_init()) {
+bool lps25_ready = false;
 
-        Serial.println("Sensor Error");
-
-        while (1) {
-            delay(10);
-        }
+for (int i = 0; i < 3; i++)
+{
+    if (lps25_init())
+    {
+        lps25_ready = true;
+        break;
     }
+
+    Serial.println("LPS25 init retry...");
+    delay(500);
+}
+
+if (!lps25_ready)
+{
+    Serial.println("LPS25 init failed. Continue and let App Watchdog handle it.");
+}
     scd40_init();
     wifi_connect();
     ambient_init(); 
@@ -58,66 +84,185 @@ void setup() {
     Serial.println(
         "Task Watchdog Started"
     );
-}
-static uint32_t last_sensor_ms = 0;
 
+    boot_ms = millis();
+}
 
 void loop() {
+    static float temperature = 0;
+    static float pressure = 0;
 
-    float temperature;
-    float pressure;
+    static uint16_t co2 = 0;
+    static float scd_temp= 0;
+    static float humidity= 0;
 
-    uint16_t co2;
-    float scd_temp;
-    float humidity;
+    static float sht_temp = 0;
+    static float sht_hum = 0;
 
-    float sht_temp;
-    float sht_hum;
+    static float absolute_humidity = 0;
+    static float dew_point = 0;
+    esp_task_wdt_reset();
 
-    if (millis() - last_sensor_ms > 5000)
-{
-    last_sensor_ms = millis();
 
-    if (lps25_read(&temperature,
-                   &pressure)) {
-    } 
-        if (scd40_read(&co2,
-                &scd_temp,
-                &humidity)) {
-    }
-        if (sht41_read(&sht_temp,
-                &sht_hum)) {
-    }
-}
-
-    ambient_send(pressure,
-            co2,
-            scd_temp,
-            humidity,
-            sht_temp,
-            sht_hum
-            );
-
+    mqtt_update();
+    
     ir_receiver_update();
     // ir_sender_update();　serialに統合
     serial_input_update();
+
+    if (millis() - last_sensor_ms > 5000)
+    {
+        last_sensor_ms = millis();
+
+        uint32_t now = millis();
+
+        last_lps25_ok =
+            lps25_read(
+                &temperature,
+                &pressure
+            );
+
+        if (last_lps25_ok)
+        {
+            last_lps25_success_ms = now;
+        }
+
+        last_scd40_ok =
+            scd40_read(
+                &co2,
+                &scd_temp,
+                &humidity
+            );
+
+        if (last_scd40_ok)
+        {
+            last_scd40_success_ms = now;
+        }
+
+        last_sht41_ok =
+            sht41_read(
+                &sht_temp,
+                &sht_hum
+            );
+
+        if (last_sht41_ok)
+        {
+            last_sht41_success_ms = now;
+
+            absolute_humidity =
+                calc_absolute_humidity(
+                    sht_temp,
+                    sht_hum
+                );
+
+            dew_point =
+                calc_dew_point(
+                    sht_temp,
+                    sht_hum
+                );
+        }
+
+        if (
+            last_lps25_ok
+            &&
+            last_scd40_ok
+            &&
+            last_sht41_ok
+        )
+        {
+            sensor_seq++;
+        }
+    }
+
+    // ambient_send(pressure,
+    //         co2,
+    //         scd_temp,
+    //         humidity,
+    //         sht_temp,
+    //         sht_hum,
+    //         absolute_humidity,
+    //         dew_point
+    //         );
+
+
 
     web_server_update(
         pressure,
         co2,
         sht_temp,
-        sht_hum
+        sht_hum,
+        absolute_humidity,
+        dew_point
     );
     mqtt_publish_sensor_periodic(
-    co2,
-    sht_temp,
-    sht_hum,
-    pressure
+        co2,
+        sht_temp,
+        sht_hum,
+        pressure,
+        absolute_humidity,
+        dew_point
     );
-    mqtt_update();
 
-    esp_task_wdt_reset();
-
+    check_app_watchdog();
     
     delay(10);
+}
+
+void check_app_watchdog()
+{
+    const uint32_t SENSOR_TIMEOUT_MS =
+        60UL * 1000UL;  // 60秒
+
+    uint32_t now =
+        millis();
+
+    if (
+        now - boot_ms > SENSOR_TIMEOUT_MS
+        &&
+        (
+            last_lps25_success_ms == 0
+            ||
+            last_scd40_success_ms == 0
+            ||
+            last_sht41_success_ms == 0
+        )
+    )
+    {
+        Serial.println("APP WATCHDOG: sensor never started. Restarting...");
+        delay(1000);
+        ESP.restart();
+    }
+
+    if (
+        last_lps25_success_ms > 0
+        &&
+        now - last_lps25_success_ms > SENSOR_TIMEOUT_MS
+    )
+    {
+        Serial.println("APP WATCHDOG: LPS25 stale. Restarting...");
+        delay(1000);
+        ESP.restart();
+    }
+
+    if (
+        last_scd40_success_ms > 0
+        &&
+        now - last_scd40_success_ms > SENSOR_TIMEOUT_MS
+    )
+    {
+        Serial.println("APP WATCHDOG: SCD40 stale. Restarting...");
+        delay(1000);
+        ESP.restart();
+    }
+
+    if (
+        last_sht41_success_ms > 0
+        &&
+        now - last_sht41_success_ms > SENSOR_TIMEOUT_MS
+    )
+    {
+        Serial.println("APP WATCHDOG: SHT41 stale. Restarting...");
+        delay(1000);
+        ESP.restart();
+    }
 }

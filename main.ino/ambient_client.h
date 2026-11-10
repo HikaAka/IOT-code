@@ -9,5 +9,8 @@ bool ambient_send(float pressure,
                   float temperature,
                   float humidity,
                   float sht_temperature,
-                  float sht_humidity                  
+                  float sht_humidity,
+                  float absolute_humidity,
+                  float dew_point
+                  
                   );

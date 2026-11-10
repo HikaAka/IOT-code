@@ -1,17 +1,59 @@
-#pragma once
+#ifndef IR_SENDER_H
+#define IR_SENDER_H
+
+#include <Arduino.h>
+
+#include "aircon_controller.h"
 
 bool ir_sender_init();
 
-// void ir_sender_update();
+void sendCool(
+    int temp,
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+);
 
-//エアコン
+void sendHeat(
+    int temp,
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+);
 
-void sendCool(int temp);
+void sendDry(
+    int temp,
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+);
 
-void sendHeat(int temp);
+void sendFan(
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+);
+
+void sendAuto(
+    int temp,
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+);
 
 void sendOff();
 
+#endif
 //ライト
 void ir_send_light_all_on();
 

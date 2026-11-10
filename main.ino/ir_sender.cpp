@@ -47,13 +47,124 @@ bool ir_sender_init() {
 
     return true;
 }
+//==================================================
+// エアコン共通部
+//==================================================
 
+static void applyCommonAirconSettings(
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+)
+{
+    switch(fan)
+    {
+        case AIRCON_FAN_LOW:
+            ac.setFan(kMitsubishiHeavy152FanLow);
+            break;
+
+        case AIRCON_FAN_MED:
+            ac.setFan(kMitsubishiHeavy152FanMed);
+            break;
+
+        case AIRCON_FAN_HIGH:
+            ac.setFan(kMitsubishiHeavy152FanHigh);
+            break;
+
+        case AIRCON_FAN_MAX:
+            ac.setFan(kMitsubishiHeavy152FanMax);
+            break;
+
+        default:
+            ac.setFan(kMitsubishiHeavy152FanAuto);
+            break;
+    }
+
+//     switch(swing_v)
+//     {
+//         case AIRCON_SWING_V_TOP:
+//             ac.setSwingVertical(kMitsubishiHeavy152SwingVHighest);
+//             break;
+
+//         case AIRCON_SWING_V_UP:
+//             ac.setSwingVertical(kMitsubishiHeavy152SwingVHigh);
+//             break;
+
+//         case AIRCON_SWING_V_MID:
+//             ac.setSwingVertical(kMitsubishiHeavy152SwingVMiddle);
+//             break;
+
+//         case AIRCON_SWING_V_DOWN:
+//             ac.setSwingVertical(kMitsubishiHeavy152SwingVLow);
+//             break;
+
+//         case AIRCON_SWING_V_BOTTOM:
+//             ac.setSwingVertical(kMitsubishiHeavy152SwingVLowest);
+//             break;
+
+//         case AIRCON_SWING_V_STOP:
+//             ac.setSwingVertical(kMitsubishiHeavy152SwingVOff);
+//             break;
+
+//         default:
+//             ac.setSwingVertical(kMitsubishiHeavy152SwingVAuto);
+//             break;
+//     }
+
+//     switch(swing_h)
+//     {
+//         case AIRCON_SWING_H_LEFT:
+//             ac.setSwingHorizontal(kMitsubishiHeavy152SwingHLeftMax);
+//             break;
+
+//         case AIRCON_SWING_H_LEFT_CENTER:
+//             ac.setSwingHorizontal(kMitsubishiHeavy152SwingHLeft);
+//             break;
+
+//         case AIRCON_SWING_H_CENTER:
+//             ac.setSwingHorizontal(kMitsubishiHeavy152SwingHMiddle);
+//             break;
+
+//         case AIRCON_SWING_H_RIGHT_CENTER:
+//             ac.setSwingHorizontal(kMitsubishiHeavy152SwingHRight);
+//             break;
+
+//         case AIRCON_SWING_H_RIGHT:
+//             ac.setSwingHorizontal(kMitsubishiHeavy152SwingHRightMax);
+//             break;
+
+//         case AIRCON_SWING_H_STOP:
+//             ac.setSwingHorizontal(kMitsubishiHeavy152SwingHOff);
+//             break;
+
+//         default:
+//             ac.setSwingHorizontal(kMitsubishiHeavy152SwingHAuto);
+//             break;
+//     }
+
+    ac.setTurbo(
+        warp == AIRCON_WARP_ON
+    );
+
+    ac.setClean(
+        bio == AIRCON_BIO_ON
+    );
+}
 //==================================================
 // 冷房
 //==================================================
-
-void sendCool(int temp) {
-
+void sendCool(
+    int temp,
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+)
+{
+    ac.stateReset();
     ac.on();
 
     ac.setMode(
@@ -62,8 +173,12 @@ void sendCool(int temp) {
 
     ac.setTemp(temp);
 
-    ac.setFan(
-        0
+    applyCommonAirconSettings(
+        fan,
+        swing_v,
+        swing_h,
+        warp,
+        bio
     );
 
     ac.send();
@@ -72,13 +187,19 @@ void sendCool(int temp) {
     Serial.println(temp);
 }
 
-
 //==================================================
 // 暖房
 //==================================================
 
-void sendHeat(int temp) {
-
+void sendHeat(
+    int temp,
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+)
+{
     ac.on();
 
     ac.setMode(
@@ -87,8 +208,12 @@ void sendHeat(int temp) {
 
     ac.setTemp(temp);
 
-    ac.setFan(
-        0
+    applyCommonAirconSettings(
+        fan,
+        swing_v,
+        swing_h,
+        warp,
+        bio
     );
 
     ac.send();
@@ -96,8 +221,104 @@ void sendHeat(int temp) {
     Serial.print("HEAT ");
     Serial.println(temp);
 }
+//==================================================
+//　除湿
+//==================================================
 
+void sendDry(
+    int temp,
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+)
+{
+    ac.on();
 
+    ac.setMode(
+        kMitsubishiHeavyDry
+    );
+
+    ac.setTemp(temp);
+
+    applyCommonAirconSettings(
+        fan,
+        swing_v,
+        swing_h,
+        warp,
+        bio
+    );
+
+    ac.send();
+
+    Serial.print("DRY ");
+    Serial.println(temp);
+}
+
+//==================================================
+//　送風
+//==================================================
+void sendFan(
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+)
+{
+    ac.on();
+
+    ac.setMode(
+        kMitsubishiHeavyFan
+    );
+
+    applyCommonAirconSettings(
+        fan,
+        swing_v,
+        swing_h,
+        warp,
+        bio
+    );
+
+    ac.send();
+
+    Serial.println("FAN");
+}
+
+//==================================================
+//　自動
+//==================================================
+void sendAuto(
+    int temp,
+    AirconFan fan,
+    AirconSwingV swing_v,
+    AirconSwingH swing_h,
+    AirconWarp warp,
+    AirconBio bio
+)
+{
+    ac.on();
+
+    ac.setMode(
+        kMitsubishiHeavyAuto
+    );
+
+    ac.setTemp(temp);
+
+    applyCommonAirconSettings(
+        fan,
+        swing_v,
+        swing_h,
+        warp,
+        bio
+    );
+
+    ac.send();
+
+    Serial.print("AUTO ");
+    Serial.println(temp);
+}
 //==================================================
 // OFF
 //==================================================

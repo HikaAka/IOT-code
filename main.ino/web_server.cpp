@@ -31,6 +31,9 @@ static float g_sht_temp;
 
 static float g_sht_humidity;
 
+static float g_absolute_humidity;
+static float g_dew_point;
+
 
 //==================================================
 // TOPページ
@@ -122,7 +125,13 @@ void handleRoot() {
     html += String(g_sht_humidity);
     html += " %</p>";
 
+    html += "<p>Absolute Humidity : ";
+    html += String(g_absolute_humidity);
+    html += " g/m^3</p>";
 
+    html += "<p>Dew Point : ";
+    html += String(g_dew_point);
+    html += " C </p>";
     //==================================================
     // エアコン状態
     //==================================================
@@ -263,6 +272,12 @@ void handleRoot() {
     html += "</button>";
 
     html += "</a>";
+
+    html += "<a href='/aircon/apply'>";
+    html += "<button>APPLY</button>";
+    html += "</a>";
+
+    
     //------------------------------------------
     // ライト
     //------------------------------------------
@@ -329,9 +344,15 @@ void handleRoot() {
 
 void handleCool() {
 
-    aircon_set_cool(
+    aircon_set_mode(
+        AIRCON_MODE_COOL
+    );
+
+    aircon_set_temperature(
         aircon_state.temperature
     );
+
+    aircon_apply();
 
     server.sendHeader(
         "Location",
@@ -341,16 +362,21 @@ void handleCool() {
     server.send(303);
 }
 
-
 //==================================================
 // HEAT
 //==================================================
 
 void handleHeat() {
 
-    aircon_set_heat(
+    aircon_set_mode(
+        AIRCON_MODE_HEAT
+    );
+
+    aircon_set_temperature(
         aircon_state.temperature
     );
+
+    aircon_apply();
 
     server.sendHeader(
         "Location",
@@ -367,7 +393,11 @@ void handleHeat() {
 
 void handleOff() {
 
-    aircon_off();
+    aircon_set_power(
+        false
+    );
+
+    aircon_apply();
 
     server.sendHeader(
         "Location",
@@ -376,7 +406,6 @@ void handleOff() {
 
     server.send(303);
 }
-
 
 //==================================================
 // 温度 +
@@ -384,14 +413,9 @@ void handleOff() {
 
 void handleTempUp() {
 
-    aircon_state.temperature++;
-
-
-    if (aircon_state.temperature > 30) {
-
-        aircon_state.temperature = 30;
-    }
-
+    aircon_set_temperature(
+        aircon_state.temperature + 1
+    );
 
     server.sendHeader(
         "Location",
@@ -401,21 +425,27 @@ void handleTempUp() {
     server.send(303);
 }
 
-
 //==================================================
 // 温度 -
 //==================================================
 
 void handleTempDown() {
 
-    aircon_state.temperature--;
+    aircon_set_temperature(
+        aircon_state.temperature - 1
+    );
 
+    server.sendHeader(
+        "Location",
+        "/"
+    );
 
-    if (aircon_state.temperature < 18) {
+    server.send(303);
+}
 
-        aircon_state.temperature = 18;
-    }
+void handleAirconApply() {
 
+    aircon_apply();
 
     server.sendHeader(
         "Location",
@@ -553,6 +583,11 @@ bool web_server_init() {
     server.on("/tempup", handleTempUp);
 
     server.on("/tempdown", handleTempDown);
+
+    server.on(
+    "/aircon/apply",
+    handleAirconApply
+);
     //------------------------------------------
     // ライト
     //------------------------------------------
@@ -604,7 +639,9 @@ void web_server_update(
     float pressure,
     uint16_t co2,
     float sht_temp,
-    float sht_humidity
+    float sht_humidity,
+    float absolute_humidity,
+    float dew_point 
 ){
 
     //------------------------------------------
@@ -618,8 +655,8 @@ void web_server_update(
     g_sht_temp = sht_temp;
 
     g_sht_humidity = sht_humidity;
-
-
+    g_absolute_humidity = absolute_humidity;
+    g_dew_point =  dew_point;
     //------------------------------------------
     // Web処理
     //------------------------------------------

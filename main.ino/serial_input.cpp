@@ -30,35 +30,45 @@ void serial_input_update() {
 
     if (cmd == "off") {
 
-        aircon_off();
+        aircon_set_power(false);
+
+        aircon_apply();
 
         return;
     }
-
-    //----------------------------------------
-    // 冷房
-    //----------------------------------------
 
     if (cmd.startsWith("c")) {
 
         int temp =
             cmd.substring(1).toInt();
 
-        aircon_set_cool(temp);
+        aircon_set_mode(
+            AIRCON_MODE_COOL
+        );
+
+        aircon_set_temperature(
+            temp
+        );
+
+        aircon_apply();
 
         return;
     }
-
-    //----------------------------------------
-    // 暖房
-    //----------------------------------------
 
     if (cmd.startsWith("h")) {
 
         int temp =
             cmd.substring(1).toInt();
 
-        aircon_set_heat(temp);
+        aircon_set_mode(
+            AIRCON_MODE_HEAT
+        );
+
+        aircon_set_temperature(
+            temp
+        );
+
+        aircon_apply();
 
         return;
     }

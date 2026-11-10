@@ -56,7 +56,9 @@ bool ambient_send(float pressure,
                   float temperature,
                   float humidity,
                   float sht_temperature,
-                  float sht_humidity                  
+                  float sht_humidity,
+                  float absolute_humidity,
+                  float dew_point                  
                   ) {
     if (millis() - lastSend < 30000) {
 
@@ -93,6 +95,15 @@ bool ambient_send(float pressure,
         d6 = 湿度
     */
     ambient.set(6, sht_humidity);
+    /*
+        d7 = 絶対湿度
+    */
+    ambient.set(7, absolute_humidity);
+
+    /*
+        d8 = 露店温度
+    */
+    ambient.set(8, dew_point);
 
     /*
         送信
