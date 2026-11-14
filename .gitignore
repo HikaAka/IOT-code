@@ -5,3 +5,6 @@ bin/
 # OS固有の隠しファイル
 .DS_Store
 Thumbs.db
+
+# ESP32 credentials
+main.ino/secrets.h

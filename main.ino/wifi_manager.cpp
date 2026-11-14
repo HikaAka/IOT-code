@@ -3,17 +3,9 @@
 #include <WiFi.h>
 
 #include "wifi_manager.h"
+#include "secrets.h"
 
 
-//==================================================
-// WiFi設定
-//==================================================
-
-const char* WIFI_SSID =
-    "JCOM_IATO";
-
-const char* WIFI_PASSWORD =
-    "307558555389";
 
 
 //==================================================
