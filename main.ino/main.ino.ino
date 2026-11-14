@@ -3,6 +3,7 @@
 #include "scd40_sensor.h"
 
 #include "wifi_manager.h"
+#include <time.h>
 
 #include "ir_receiver.h"
 #include "ir_sender.h"
@@ -13,6 +14,7 @@
 #include "light_controller.h"
 #include "mqtt_client.h"
 #include "environment_calc.h"
+#include "sensor_history.h"
 
 #include <esp_task_wdt.h>
 static uint32_t last_sensor_ms = 0;
@@ -32,7 +34,9 @@ static uint32_t last_alive_ms = 0;
 
 void check_app_watchdog();
 void setup() {
+    
 
+    
     Serial.begin(115200);
     delay(1000);
 
@@ -62,12 +66,32 @@ if (!lps25_ready)
 }
     scd40_init();
     wifi_connect();
+
+    // Wi-Fi接続完了後、MQTT接続前に実行
+    configTime(0, 0, "pool.ntp.org", "time.google.com");
+
+    time_t now = time(nullptr);
+    int attempts = 0;
+
+    while (now < 1700000000 && attempts < 30) {
+        delay(500);
+        now = time(nullptr);
+        attempts++;
+    }
+
+    if (now < 1700000000) {
+        Serial.println("NTP sync failed");
+    } else {
+        Serial.println("NTP sync OK");
+    }
+    
     ir_receiver_init();
     ir_sender_init();
     sht41_init();
     web_server_init();
     light_init();
     mqtt_init();
+    history_init(); // mount existing LittleFS (does not format by default)
 
     esp_task_wdt_config_t wdt_config = {
         .timeout_ms = 30000,
@@ -169,6 +193,11 @@ void loop() {
         )
         {
             sensor_seq++;
+            // Record once per 10 minutes (only after successful sensor reads)
+            history_record_if_due(
+                co2, sht_temp, sht_hum, pressure,
+                absolute_humidity, dew_point
+            );
         }
     }
 
